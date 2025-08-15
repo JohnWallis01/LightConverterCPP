@@ -8,6 +8,12 @@
 #define POINTS 1024
 #define GRID_SIZE_MM 5
 
+#define MASKS 4
+#define SPACING_MM 10
+
+
+
+
 // Structure to represent the optical field
 struct Optical_Field
 {
@@ -108,6 +114,21 @@ void generate_gaussian_beam(struct Optical_Field *field, double beam_radius_mm)
     }
 }
 
+void phase_shift(struct Optical_Field *field, double phase_shift_rad)
+{
+    // Apply a phase shift to the optical field
+    for (int i = 0; i < field->N; i++)
+    {
+        for (int j = 0; j < field->N; j++)
+        {
+            double real_part = field->electric_field[j * field->N + i][0];
+            double imag_part = field->electric_field[j * field->N + i][1];
+            field->electric_field[j * field->N + i][0] = real_part * cos(phase_shift_rad) - imag_part * sin(phase_shift_rad);
+            field->electric_field[j * field->N + i][1] = real_part * sin(phase_shift_rad) + imag_part * cos(phase_shift_rad);
+        }
+    }
+}
+
 void save_field(struct Optical_Field *field, const char *realfilename, const char *imagfilename)
 {
     FILE *fptr = fopen(realfilename, "w");
@@ -138,16 +159,61 @@ void save_field(struct Optical_Field *field, const char *realfilename, const cha
     fclose(fptr);
 }
 
+//Code to do with building phase screens
+struct Phase_Screen
+{
+    double *screen; // Pointer to the phase screen data array
+    int N; // Number of points per dimension
+};
+
+init_phase_screen(struct Phase_Screen *screen, int N)
+{
+    screen->N = N;
+    screen->screen = (double *)malloc(sizeof(double) * N * N);
+    if (screen->screen == NULL)
+    {
+        perror("Error allocating memory for phase screen");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//Propogating fields through the  devices
+
+void Forward_Propagate(struct Optical_Field *field, double propagation_distance_mm, struct Phase_Screen *phase_screens int target_mask_index)
+{
+    // Propagate the optical field forward
+    propagate_optical_field(field, propagation_distance_mm);
+    for (int i = 0; i <target_mask_index; i++)
+    {
+        phase_shift(field, phase_screens[i]); // Apply phase shift from the phase screen
+        propagate_optical_field(field, propagation_distance_mm); // Propagate the field again
+    }
+}
+void Backward_Propagate(struct Optical_Field *field, double propagation_distance_mm, struct Phase_Screen *phase_screens int target_mask_index)
+{
+    // Propagate the optical field forward
+    propagate_optical_field(field, -propagation_distance_mm);
+    for (int i = target_mask_index; i  > -1; i--)
+    {
+        phase_shift(field, -phase_screens[i]); // Apply phase shift from the phase screen
+        propagate_optical_field(field, -propagation_distance_mm); // Propagate the field again
+    }
+}
+
+
+
+
+
+
 
 int main()  {
-    struct Optical_Field field;
-    init_optical_field(&field, WAVELENGTH_NM, GRID_SIZE_MM, POINTS);
 
-    generate_gaussian_beam(&field, 1.2);
-    save_field(&field, "re_optical_field.dat", "im_optical_field.dat");
-    propagate_optical_field(&field, 1800.0);
-    save_field(&field, "re_propagated_field.dat", "im_propagated_field.dat");
+    struct *Phase_Screen phase_screens[MASKS];
+    // Initialize phase screens (do we have to some MALLOC here?)
+    for (int i = 0; i < MASKS; i++) {
+        init_phase_screen(phase_screens[i], POINTS);
+    }
 
-    return 0;
+
 }
 
