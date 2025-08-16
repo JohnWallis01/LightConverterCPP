@@ -198,6 +198,32 @@ void save_field(struct Optical_Field *field, const char *realfilename, const cha
     fclose(fptr);
 }
 
+double get_mode_match(struct Optical_Field *f1, struct Optical_Field *f2)
+{
+    // Calculate the mode match between two optical fields
+    if (f1->N != f2->N)
+    {
+        fprintf(stderr, "Error: Optical fields must have the same size for mode matching.\n");
+    }
+    double f1_integration = 0.0;
+    double f2_integration = 0.0;
+    double re_match_integral = 0.0;
+    double im_match_integral = 0.0;
+    for (int i = 0; i < f1->N * f1->N; i++)
+    {
+        f1_integration += (f1->electric_field[i][0] * f1->electric_field[i][0]) + (f1->electric_field[i][1] * f1->electric_field[i][1]);
+        f2_integration += (f2->electric_field[i][0] * f2->electric_field[i][0]) + (f2->electric_field[i][1] * f2->electric_field[i][1]);
+        re_match_integral += (f1->electric_field[i][0] * f2->electric_field[i][0]) + (f1->electric_field[i][1] * f2->electric_field[i][1]);
+        im_match_integral += (f1->electric_field[i][1] * f2->electric_field[i][0]) - (f1->electric_field[i][0] * f2->electric_field[i][1]);
+    }
+    if (f1_integration == 0 || f2_integration == 0)
+    {
+        fprintf(stderr, "Error: One of the optical fields has zero intensity.\n");
+    }
+    double norm_factor = (f1_integration * f2_integration);
+    double total_overlap = re_match_integral * re_match_integral + im_match_integral * im_match_integral;
+    return (total_overlap / norm_factor); // Return the mode match value
+}
 
 void phase_shift(struct Optical_Field *field, struct Phase_Screen *phase_screen, int DIRECTION)
 {
@@ -235,8 +261,9 @@ void Forward_Propagate(struct Optical_Field *field, double propagation_distance_
 void Backward_Propagate(struct Optical_Field *field, double propagation_distance_mm, struct Phase_Screen phase_screens[], int target_mask_index)
 {
     // Propagate the optical field forward
-    propagate_optical_field(field, -propagation_distance_mm);
-    for (int i = target_mask_index; i  > -1; i--)
+    
+    propagate_optical_field(field, -propagation_distance_mm); // Propagate the field again
+    for (int i = MASKS-1; i  > target_mask_index ; i--)
     {
         phase_shift(field, &phase_screens[i], BACKWARD); // Apply phase shift from the phase screen
         propagate_optical_field(field, -propagation_distance_mm); // Propagate the field again
@@ -265,7 +292,7 @@ void Optimise_Phase_Masks(struct Optical_Field *input_field, struct Optical_Fiel
         double real_overlap = input_field->electric_field[i][0] * output_field->electric_field[i][0] + input_field->electric_field[i][1] * output_field->electric_field[i][1];
         double imag_overlap = input_field->electric_field[i][1] * output_field->electric_field[i][0] - input_field->electric_field[i][0] * output_field->electric_field[i][1];
         // Calculate the phase shift needed to achieve the desired output field
-        double phase_shift_rad = atan2(imag_overlap, real_overlap);
+        double phase_shift_rad = -atan2(imag_overlap, real_overlap);
         phase_screens[target_mask_index].screen[i] = phase_shift_rad; // Store the phase shift in the phase screen
     }
     // Reload the changed input and output fields
@@ -281,7 +308,7 @@ void Optimise_Phase_Masks(struct Optical_Field *input_field, struct Optical_Fiel
 
 }
 
-#define ITERATIONS 100
+#define ITERATIONS 10
 
 int main()  {
     printf("Initalizing Phase Screens\n"); 
@@ -300,6 +327,16 @@ int main()  {
     init_optical_field(&output_mode, WAVELENGTH_NM, GRID_SIZE_MM, POINTS);
     printf("...");
     generate_gaussian_beam(&output_mode, 1.0, 0.0, 0.0); // Generate a Gaussian beam with radius 1.0 mm centered at (0,0)
+
+    fftw_complex *input_electric_field = malloc(sizeof(fftw_complex) * input_mode.N * input_mode.N);
+    fftw_complex *output_electric_field = malloc(sizeof(fftw_complex) * output_mode.N * output_mode.N);
+    for (int i = 0; i < input_mode.N * input_mode.N; i++)
+    {
+        input_electric_field[i][0] = input_mode.electric_field[i][0];
+        input_electric_field[i][1] = input_mode.electric_field[i][1];
+        output_electric_field[i][0] = output_mode.electric_field[i][0];
+        output_electric_field[i][1] = output_mode.electric_field[i][1];
+    }
     printf(" Done. \n");
 
     // Perform the phase optimization
@@ -308,11 +345,15 @@ int main()  {
         int target_mask_index = i % MASKS; // Cycle through the masks
         printf("Progress %u\n", i);
         Optimise_Phase_Masks(&input_mode, &output_mode, phase_screens, target_mask_index);
+        Forward_Propagate(&input_mode, SPACING_MM, phase_screens, MASKS);
+        propagate_optical_field(&input_mode, SPACING_MM); // Final propagation after all phase screens
+        double match = get_mode_match(&input_mode, &output_mode);
+        printf("mode matching: %f\n", match);
     }
 
     //Now fire the input mode through the phase screens and save the output
     printf("Solving output ");
-    Forward_Propagate(&input_mode, SPACING_MM, phase_screens, MASKS - 1);
+    Forward_Propagate(&input_mode, SPACING_MM, phase_screens, MASKS);
     printf("...");
     propagate_optical_field(&input_mode, SPACING_MM); // Final propagation after all phase screens
     printf("...");
