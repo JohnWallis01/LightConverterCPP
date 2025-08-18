@@ -1,0 +1,26 @@
+
+---TEST DATA for N=1024-----
+Testing Initalize + Propogate
+Time taken for 100 iterations with Py: 10.35 seconds
+Average time per iteration with Py: 0.10 seconds
+Time taken for 100 iterations with C: 15.75 seconds
+Average time per iteration with C: 0.16 seconds
+Testing Propogate only
+Time taken for 100 iterations with Py: 10.47 seconds
+Average time per iteration with Py: 0.10 seconds
+Time taken for 100 iterations with C: 8.32 seconds
+Average time per iteration with C: 0.08 seconds
+
+
+----TEST DATA for N=4096------
+
+Testing Initalize + Propogate
+Time taken for 100 iterations with Py: 193.86 seconds
+Average time per iteration with Py: 1.94 seconds
+Time taken for 100 iterations with C: 13.75 seconds
+Average time per iteration with C: 0.14 seconds
+Testing Propogate only
+Time taken for 100 iterations with Py: 190.02 seconds
+Average time per iteration with Py: 1.90 seconds
+Time taken for 100 iterations with C: 8.88 seconds
+Average time per iteration with C: 0.09 seconds
