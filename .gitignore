@@ -1,3 +1,5 @@
 a.out
 /outputs
 lightpipes.so
+/.vscode
+/__pycache__
