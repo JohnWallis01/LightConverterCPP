@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "stdlib.h": "c",
-        "complex.h": "c",
-        "cmath": "c"
-    }
-}
