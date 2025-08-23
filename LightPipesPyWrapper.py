@@ -1,6 +1,7 @@
 from ctypes import *
 import numpy as np
 so_file = "/mnt/c/Users/John/Documents/LightConverterCPP/lightpipes.so"
+so_file = "/mnt/e/Libraries/Documents/LightConverterCPP/lightpipes.so"
 jw_lp = CDLL(so_file)
 
 jw_lp.begin_field.argtypes = [c_double, c_double, c_int]
