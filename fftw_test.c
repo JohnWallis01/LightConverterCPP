@@ -357,6 +357,7 @@ void multimode_optimise_phase_masks(struct Optical_Field input_modes[], struct O
         double phase_shift_rad = -atan2(cimag(overlap_field[i]), creal(overlap_field[i]));
         phase_screens[target_mask_index].screen[i] = phase_shift_rad;
     }
+    free(overlap_field);
 }
 
 
